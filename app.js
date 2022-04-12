@@ -2,7 +2,6 @@ var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
 var http = require('http');
 const qs = require('querystring');
-const formidable = require('formidable');
 const url = require('url');
 var add = 'mongodb://maharathidb:91pkTnOTqbDN9PfRWvuniB2LSvvmP40KBt1EyudX5HGQHevebKagAMyLaXJAvUQeCZplctQSMH3hAsj5aNzC1Q==@maharathidb.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&maxIdleTimeMS=120000&appName=@maharathidb@';
 /* example db entry
@@ -16,23 +15,23 @@ var add = 'mongodb://maharathidb:91pkTnOTqbDN9PfRWvuniB2LSvvmP40KBt1EyudX5HGQHev
 var insertDocument = function(db,query, callback) {
     db.collection('emp').insertOne( query, function(err, result) {
         assert.equal(err, null);
-        console.log("Inserted a document into the families collection.");
+        console.log("Inserted a document into the emp collection.");
         callback();
     });
 };
 const projection = { "_id": 0 };
-async function findDocument(db,query,res, callback) {
+async function findDocument(db,query,callback) {
+    var out="";
     await db.collection('emp').find(query,projection)
     .toArray()
     .then(items => {
         console.log(`Successfully found ${items.length} documents.`)
         for(i of items){
-        console.log(i);
-        res.write(JSON.stringify(i));
+        out+=JSON.stringify(i,null,2);
     }
-    return items;
     }).catch(err => console.error(`Failed to find documents: ${err}`));
     callback();
+    return out;
 };
 
 var removeDocument = function(db,query, callback) {
@@ -85,19 +84,15 @@ MongoClient.connect(add, function(err, client) {
         else if(res.trim()=='2')
         {
             
-            http.createServer(function (req, res) {
+            http.createServer(async function (req, res) {
                 if (req.method === 'GET' && req.url.startsWith('/inp_accepted')) {
-                    console.log("boohoo");
                     var temp = url.parse(req.url,true);
-                    //console.log(temp.query['input']);
                     var fq=temp.query['input'];
-                    var arr = findDocument(db, JSON.parse(fq),res,function(){
+                    var rec = await findDocument(db, JSON.parse(fq),function(){
                         client.close();
                     });
-                    //for(i of arr){
-                        //res.write(JSON.stringify(arr));
-                    //}
-                    return res.end();
+                    res.write("Search results :\n");
+                    return res.end(rec);
                 }
                    else{
                 res.writeHead(200, {'Content-Type': 'text/html'});
